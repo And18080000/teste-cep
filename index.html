@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cálculo de Frete - Melhor Envio</title>
+    <!-- TailwindCSS via CDN para simplicidade -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo customizado para destacar a linha do frete mais barato */
+        .highlight-cheapest {
+            background-color: #fef9c3; /* Amarelo claro */
+        }
+        /* Estilo para o spinner de carregamento */
+        .loader {
+            border-top-color: #3b82f6; /* Azul do Tailwind */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Header Fixo -->
+    <header class="bg-white shadow-md fixed top-0 left-0 right-0 z-10">
+        <div class="container mx-auto px-6 py-4">
+            <h1 class="text-2xl font-bold text-gray-800">Cálculo de Frete - Melhor Envio</h1>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 pt-24 pb-12">
+        <!-- Seção do Formulário -->
+        <div id="form-section" class="bg-white p-8 rounded-lg shadow-lg max-w-3xl mx-auto transition-opacity duration-500">
+            <form id="freight-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- CEPs -->
+                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="cep-origem" class="block text-sm font-medium text-gray-700 mb-1">CEP de Origem</label>
+                            <input type="text" id="cep-origem" name="cep-origem" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="00000-000">
+                        </div>
+                        <div>
+                            <label for="cep-destino" class="block text-sm font-medium text-gray-700 mb-1">CEP de Destino</label>
+                            <input type="text" id="cep-destino" name="cep-destino" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="00000-000">
+                        </div>
+                    </div>
+                    <!-- Pacote -->
+                    <div>
+                        <label for="peso" class="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
+                        <input type="number" id="peso" name="peso" step="0.01" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="1.5">
+                    </div>
+                    <div>
+                        <label for="valor" class="block text-sm font-medium text-gray-700 mb-1">Valor Declarado (R$)</label>
+                        <input type="number" id="valor" name="valor" step="0.01" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="100.00 (opcional)">
+                    </div>
+                    <!-- Dimensões -->
+                    <div class="md:col-span-2 grid grid-cols-3 gap-4">
+                        <div>
+                            <label for="altura" class="block text-sm font-medium text-gray-700 mb-1">Altura (cm)</label>
+                            <input type="number" id="altura" name="altura" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="10">
+                        </div>
+                        <div>
+                            <label for="largura" class="block text-sm font-medium text-gray-700 mb-1">Largura (cm)</label>
+                            <input type="number" id="largura" name="largura" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="15">
+                        </div>
+                        <div>
+                            <label for="comprimento" class="block text-sm font-medium text-gray-700 mb-1">Comprimento (cm)</label>
+                            <input type="number" id="comprimento" name="comprimento" required class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="20">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botão de Calcular -->
+                <div class="mt-8">
+                    <button type="submit" id="submit-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 flex items-center justify-center text-lg">
+                        <span id="button-text">Calcular Frete</span>
+                        <div id="loader" class="loader w-6 h-6 rounded-full border-4 border-gray-200 hidden ml-3"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Seção de Resultados -->
+        <div id="results-section" class="hidden mt-8 max-w-5xl mx-auto transition-opacity duration-500">
+            <div class="bg-white p-8 rounded-lg shadow-lg">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800">Opções de Frete Encontradas</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transportadora</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serviço</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prazo Estimado</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor do Frete</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table" class="divide-y divide-gray-200">
+                            <!-- Linhas de resultado serão inseridas aqui via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                 <button id="recalculate-button" class="mt-8 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 text-lg">
+                    Fazer Novo Cálculo
+                </button>
+            </div>
+        </div>
+
+        <!-- Mensagem de Erro -->
+        <div id="error-message" class="hidden mt-8 max-w-3xl mx-auto bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+            <strong class="font-bold">Ocorreu um erro!</strong>
+            <span class="block sm:inline" id="error-text"></span>
+        </div>
+    </main>
+
+    <script>
+        // --- Referências aos elementos do DOM ---
+        const form = document.getElementById('freight-form');
+        const formSection = document.getElementById('form-section');
+        const resultsSection = document.getElementById('results-section');
+        const errorSection = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const resultsTable = document.getElementById('results-table');
+        const recalculateButton = document.getElementById('recalculate-button');
+        const submitButton = document.getElementById('submit-button');
+        const buttonText = document.getElementById('button-text');
+        const loader = document.getElementById('loader');
+
+        // --- Lógica Principal ---
+
+        // Adiciona o listener para o envio do formulário
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Impede o recarregamento da página
+            
+            // Reseta a UI para um novo cálculo
+            resetUI();
+            setLoading(true);
+
+            // Coleta e estrutura os dados do formulário para a API
+            const formData = new FormData(form);
+            const requestBody = {
+                from: { postal_code: formData.get('cep-origem').replace(/\D/g, '') },
+                to: { postal_code: formData.get('cep-destino').replace(/\D/g, '') },
+                package: {
+                    weight: parseFloat(formData.get('peso')),
+                    width: parseInt(formData.get('largura')),
+                    height: parseInt(formData.get('altura')),
+                    length: parseInt(formData.get('comprimento'))
+                },
+                options: {
+                    insurance_value: parseFloat(formData.get('valor')) || 0,
+                    receipt: false,
+                    own_hand: false
+                }
+            };
+            
+            try {
+                // A requisição é feita para a nossa própria API (a função serverless)
+                // Isso protege o token de autenticação
+                const response = await fetch('/api/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const results = await response.json();
+
+                if (!response.ok) {
+                    // Se a resposta não for OK, lança um erro com a mensagem da API
+                    throw new Error(results.message || 'Falha ao calcular o frete.');
+                }
+                
+                // Filtra apenas os resultados válidos que têm preço e não têm erro
+                const validResults = results.filter(r => r.price && !r.error);
+
+                if (validResults.length === 0) {
+                   throw new Error("Nenhuma transportadora disponível para o trecho e dimensões informados.");
+                }
+
+                // Encontra o frete mais barato para destacar
+                const cheapest = validResults.reduce((min, r) => parseFloat(r.price) < parseFloat(min.price) ? r : min, validResults[0]);
+
+                // Exibe os resultados na tela
+                displayResults(validResults, cheapest.id);
+
+            } catch (error) {
+                displayError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Adiciona o listener para o botão de recalcular
+        recalculateButton.addEventListener('click', () => {
+            resultsSection.classList.add('hidden');
+            formSection.classList.remove('hidden');
+            form.reset();
+        });
+
+        // --- Funções Auxiliares ---
+
+        /**
+         * Exibe os resultados na tabela.
+         * @param {Array} results - A lista de opções de frete.
+         * @param {number} cheapestId - O ID do frete mais barato para destaque.
+         */
+        function displayResults(results, cheapestId) {
+            results.forEach(result => {
+                const row = document.createElement('tr');
+                if (result.id === cheapestId) {
+                    row.classList.add('highlight-cheapest');
+                }
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <img class="h-10 w-10" src="${result.company.picture}" alt="Logo ${result.company.name}">
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${result.company.name}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${result.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${result.delivery_time} dias</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-900">R$ ${parseFloat(result.price).toFixed(2).replace('.', ',')}</td>
+                `;
+                resultsTable.appendChild(row);
+            });
+
+            formSection.classList.add('hidden');
+            resultsSection.classList.remove('hidden');
+        }
+
+        /**
+         * Exibe uma mensagem de erro na tela.
+         * @param {string} message - A mensagem de erro a ser exibida.
+         */
+        function displayError(message) {
+            errorText.textContent = ` ${message}`;
+            errorSection.classList.remove('hidden');
+        }
+
+        /**
+         * Controla o estado de carregamento do botão de submit.
+         * @param {boolean} isLoading - True para ativar o estado de loading, false para desativar.
+         */
+        function setLoading(isLoading) {
+            if (isLoading) {
+                buttonText.textContent = 'Calculando...';
+                loader.classList.remove('hidden');
+                submitButton.disabled = true;
+                submitButton.classList.add('cursor-not-allowed');
+            } else {
+                buttonText.textContent = 'Calcular Frete';
+                loader.classList.add('hidden');
+                submitButton.disabled = false;
+                submitButton.classList.remove('cursor-not-allowed');
+            }
+        }
+
+        /**
+         * Limpa a UI de resultados e erros anteriores.
+         */
+        function resetUI() {
+            errorSection.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            resultsTable.innerHTML = '';
+        }
+    </script>
+</body>
+</html>
